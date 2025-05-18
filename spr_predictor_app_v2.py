@@ -1,11 +1,5 @@
 from IPython import get_ipython
 from IPython.display import display
-
-# %%
-# Install streamlit and pyngrok
-!pip install streamlit==1.35.0 pyngrok==7.0.0
-
-# %%
 import streamlit as st
 import numpy as np
 import joblib
