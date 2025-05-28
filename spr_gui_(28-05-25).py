@@ -2,15 +2,24 @@ import streamlit as st
 import numpy as np
 import joblib
 import os
-from pyngrok import ngrok
+import time
 import pandas as pd
 
-# Load the pre-trained model and scaler
+# Debug: Print current working directory
+st.write(f"Current working directory: {os.getcwd()}")
+
+# Load the pre-trained model and scaler with timing
+start_time = time.perf_counter()
 try:
     model = joblib.load('performance_best_xgboost_model.pkl')
     scaler = joblib.load('performance_feature_scaler.pkl')
-except FileNotFoundError:
-    st.error("Model or scaler file not found. Please ensure 'performance_best_xgboost_model.pkl' and 'performance_feature_scaler.pkl' are in the correct directory.")
+    load_time = time.perf_counter() - start_time
+    st.write(f"Model and scaler loaded in {load_time:.2f} seconds")
+except FileNotFoundError as e:
+    st.error(f"Model or scaler file not found: {str(e)}. Please ensure files are in {os.getcwd()}.")
+    st.stop()
+except Exception as e:
+    st.error(f"Error loading model or scaler: {str(e)}")
     st.stop()
 
 def predict_resonance_and_loss(analyte_ri, num_layers, materials):
@@ -39,18 +48,6 @@ def predict_resonance_and_loss(analyte_ri, num_layers, materials):
 
 # Streamlit GUI
 st.title("SPR Sensor Performance Prediction")
-
-st.markdown(
-    """
-    <style>
-    .stApp {background-color: #1a1a1a; color: white;}
-    .stTextInput > div > div > input {background-color: #2a2a2a; color: white;}
-    .stNumberInput > div > div > input {background-color: #2a2a2a; color: white;}
-    .stSelectbox > div > div > select {background-color: #2a2a2a; color: white;}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 st.header("Input Parameters")
 
