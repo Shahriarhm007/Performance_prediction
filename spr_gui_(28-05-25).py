@@ -2,27 +2,30 @@ import streamlit as st
 import numpy as np
 import joblib
 import os
-import time
 import pandas as pd
 
-# Debug: Print current working directory
-st.write(f"Current working directory: {os.getcwd()}")
-
-# Load the pre-trained model and scaler with timing
-start_time = time.perf_counter()
+# Load the pre-trained model and scaler
 try:
     model = joblib.load('performance_best_xgboost_model.pkl')
     scaler = joblib.load('performance_feature_scaler.pkl')
-    load_time = time.perf_counter() - start_time
-    st.write(f"Model and scaler loaded in {load_time:.2f} seconds")
-except FileNotFoundError as e:
-    st.error(f"Model or scaler file not found: {str(e)}. Please ensure files are in {os.getcwd()}.")
-    st.stop()
-except Exception as e:
-    st.error(f"Error loading model or scaler: {str(e)}")
+except FileNotFoundError:
+    st.error("Model or scaler file not found. Please ensure 'performance_best_xgboost_model.pkl' and 'performance_feature_scaler.pkl' are in the correct directory.")
     st.stop()
 
 def predict_resonance_and_loss(analyte_ri, num_layers, materials):
+    """
+    Predicts Resonance Wavelength (µm) and Peak Loss (dB/m) for a given Analyte RI
+    and layer configuration.
+
+    Parameters:
+    - analyte_ri (float): Refractive index of the analyte.
+    - num_layers (int): Number of layers (1 to 5).
+    - materials (list of str): Material names for 5 layers
+                              (e.g., ["Au", "None", "Graphene (C)", "Ag", "Cu"]).
+
+    Returns:
+    - tuple: (resonance_wavelength, peak_loss) in µm and dB/m
+    """
     material_codes = {"N/A": 0, "Gold (Au)": 1, "Silver (Ag)": 2, "Copper (Cu)": 3, "Graphene (C)": 4}
     thickness_map = {"Gold (Au)": 0.035, "Silver (Ag)": 0.035, "Copper (Cu)": 0.035, "Graphene (C)": 0.00034, "N/A": 0.0}
 
@@ -48,6 +51,18 @@ def predict_resonance_and_loss(analyte_ri, num_layers, materials):
 
 # Streamlit GUI
 st.title("SPR Sensor Performance Prediction")
+
+st.markdown(
+    """
+    <style>
+    .stApp {background-color: #1a1a1a; color: white;}
+    .stTextInput > div > div > input {background-color: #2a2a2a; color: white;}
+    .stNumberInput > div > div > input {background-color: #2a2a2a; color: white;}
+    .stSelectbox > div > div > select {background-color: #2a2a2a; color: white;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.header("Input Parameters")
 
@@ -106,8 +121,17 @@ if st.button("Calculate"):
 
             st.dataframe(results_df)
 
-            # Export Option
+            # Export Options
             export_path = st.text_input("Export generated data (excel):", value="D:\\MLDataset")
             if st.button("Export"):
                 results_df.to_excel(f"{export_path}\\spr_results.xlsx", index=False)
                 st.success("Data exported successfully!")
+
+            # CSV Download Option
+            csv = results_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="Download Results as CSV",
+                data=csv,
+                file_name="spr_prediction_results.csv",
+                mime="text/csv",
+            )
