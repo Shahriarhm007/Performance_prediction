@@ -1,6 +1,8 @@
 import streamlit as st
 import numpy as np
 import joblib
+import os
+from pyngrok import ngrok
 import pandas as pd
 
 # Load the pre-trained model and scaler
