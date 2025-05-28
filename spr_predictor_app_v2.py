@@ -11,7 +11,7 @@ try:
     scaler = joblib.load('performance_feature_scaler.pkl')
 except FileNotFoundError:
     st.error("Model or scaler file not found. Please ensure 'performance_best_xgboost_model.pkl' and 'performance_feature_scaler.pkl' are in the correct directory.")
-    st.stop() # Stop the app if files are missing
+    st.stop()
 
 def predict_resonance_and_loss(analyte_ri, num_layers, materials):
     """
@@ -43,26 +43,15 @@ def predict_resonance_and_loss(analyte_ri, num_layers, materials):
     if num_layers >= 5:
         distances[3] = 1.05 + thicknesses[0] + thicknesses[1] + thicknesses[2] + thicknesses[3]
 
-    # Ensure input lists are the correct length
     if len(material_codes_int) != 5 or len(thicknesses) != 5 or len(distances) != 4:
         raise ValueError("Material codes and thicknesses must have 5 elements, distances must have 4 elements.")
 
-    # Assemble the 16-feature input array
     input_array = [analyte_ri, num_layers] + material_codes_int + thicknesses + distances
-
-    # Convert to numpy array and reshape for scaling (1 sample, 16 features)
     input_array = np.array(input_array).reshape(1, -1)
-
-    # Scale the input using the loaded scaler
     scaled_input = scaler.transform(input_array)
-
-    # Predict using the model (returns log-transformed values)
     predictions = model.predict(scaled_input)
-
-    # Exponentiate predictions and adjust for resonance wavelength
-    resonance_wavelength = np.exp(predictions[0][0]) - 1  # Adjusted for ln(y + 1) training
-    peak_loss = np.exp(predictions[0][1])  # No adjustment needed for peak loss (assuming ln(y))
-
+    resonance_wavelength = np.exp(predictions[0][0]) - 1
+    peak_loss = np.exp(predictions[0][1])
     return resonance_wavelength, peak_loss
 
 # Streamlit GUI
@@ -107,6 +96,27 @@ if st.button("Predict for RI Range"):
 
         if results_data:
             results_df = pd.DataFrame(results_data, columns=["Analyte RI", "Resonance Wavelength (µm)", "Peak Loss (dB/m)"])
+            
+            # Calculate Sensitivities
+            wavelength_sensitivity = []
+            amplitude_sensitivity = []
+            for i in range(len(results_df) - 1):
+                delta_ri = results_df["Analyte RI"][i + 1] - results_df["Analyte RI"][i]
+                delta_wavelength = results_df["Resonance Wavelength (µm)"][i + 1] - results_df["Resonance Wavelength (µm)"][i]
+                delta_loss = results_df["Peak Loss (dB/m)"][i + 1] - results_df["Peak Loss (dB/m)"][i]
+                if delta_ri != 0 and results_df["Peak Loss (dB/m)"][i] != 0:
+                    s_lambda = delta_wavelength / delta_ri if delta_ri != 0 else 0
+                    s_amplitude = -(1 / results_df["Peak Loss (dB/m)"][i]) * (delta_loss / delta_ri) if delta_ri != 0 else 0
+                    wavelength_sensitivity.append(s_lambda)
+                    amplitude_sensitivity.append(s_amplitude)
+            # Assign first row as 0 (no previous data for sensitivity)
+            wavelength_sensitivity.insert(0, 0)
+            amplitude_sensitivity.insert(0, 0)
+
+            # Add sensitivity columns
+            results_df["Wavelength Sensitivity"] = wavelength_sensitivity
+            results_df["Amplitude Sensitivity"] = amplitude_sensitivity
+
             st.header("Prediction Results for Analyte RI Range")
             st.dataframe(results_df)
 
@@ -119,26 +129,19 @@ if st.button("Predict for RI Range"):
                 mime="text/csv",
             )
 
-# %%
 # Run the Streamlit app in the background and expose it with ngrok
-# You need to replace 'YOUR_NGROK_AUTH_TOKEN' with your actual ngrok token
-# You can get a token from https://dashboard.ngrok.com/get-started/your-authtoken
-# If you don't have an ngrok account, you'll need to sign up.
-
 try:
     # Authenticate ngrok (replace with your actual token)
-    # You only need to run this once per Colab session
     ngrok.set_auth_token("2xEP2anuSbgqGu4xc3OgYU3TB4F_25Lp6xgVapAkdZSHJ1ig1")
 
     # Start the Streamlit app in the background
-    # The &> /dev/null & redirects output and runs in the background
     os.system(f"streamlit run {streamlit_app_file} &")
 
-    # Wait a few seconds for the app to start (optional but recommended)
+    # Wait a few seconds for the app to start
     import time
     time.sleep(5)
 
-    # Create a public URL with ngrok for port 8501 (Streamlit's default)
+    # Create a public URL with ngrok for port 8501
     public_url = ngrok.connect(8501)
 
     print(f"Streamlit app public URL: {public_url}")
