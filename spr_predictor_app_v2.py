@@ -72,9 +72,9 @@ st.header("Input Parameters")
 
 # Analyte RI Range
 st.subheader("Analyte Refractive Index (RI) Range")
-ri_start = st.number_input("Start RI", min_value=1.33, max_value=1.42, value=1.33, step=0.001)
-ri_end = st.number_input("End RI", min_value=1.33, max_value=1.42, value=1.41, step=0.001)
-ri_step = st.number_input("Step Size", min_value=0.001, max_value=0.1, value=0.02, step=0.001)
+ri_start = st.number_input("Start RI", min_value=1.33, max_value=1.43, value=1.33, step=0.001, format="%.3f")
+ri_end = st.number_input("End RI", min_value=1.33, max_value=1.43, value=1.41, step=0.001, format="%.3f")
+ri_step = st.number_input("Step Size", min_value=0.001, max_value=0.1, value=0.005, step=0.001, format="%.3f")
 
 # Number of Layers
 num_layers = st.selectbox("Number of Layers", options=[1, 2, 3, 4, 5], index=0)
