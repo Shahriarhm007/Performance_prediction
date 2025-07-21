@@ -5,19 +5,20 @@ import os
 from pyngrok import ngrok
 import pandas as pd
 
-# Load the pre-trained 3-layer model and scaler
+# Load the pre-trained models and scaler
 try:
-    # Changed to load the 3-layer model and scaler
-    model = joblib.load('best_xgboost_model_3lyrs.pkl')
+    # Load separate models for Resonance Wavelength and Peak Loss
+    model_rlam = joblib.load('best_xgboost_model_rlam.pkl')
+    model_ploss = joblib.load('best_xgboost_model_ploss.pkl')
     scaler = joblib.load('scaler_3lyrs.pkl')
 except FileNotFoundError:
-    st.error("Model or scaler file not found. Please ensure 'best_xgboost_model_3lyrs.pkl' and 'scaler_3lyrs.pkl' are in the correct directory.")
-    st.stop() # Stop the app if files are missing
+    st.error("One or more files (best_xgboost_model_rlam.pkl, best_xgboost_model_ploss.pkl, or scaler_3lyrs.pkl) not found. Please ensure all files are in the correct directory.")
+    st.stop()  # Stop the app if files are missing
 
 def predict_resonance_and_loss(analyte_ri, num_layers, materials):
     """
     Predicts Resonance Wavelength (µm) and Peak Loss (dB/m) for a given Analyte RI
-    and a 3-layer configuration.
+    and a 3-layer configuration using two separate models.
 
     Parameters:
     - analyte_ri (float): Refractive index of the analyte.
@@ -56,16 +57,13 @@ def predict_resonance_and_loss(analyte_ri, num_layers, materials):
     # Scale the input using the loaded scaler
     scaled_input = scaler.transform(input_array)
 
-    # Predict using the model (returns log-transformed values)
-    predictions = model.predict(scaled_input)
-
-    # Inverse transform predictions using exp(x) - 1 for log1p
-    resonance_wavelength = np.expm1(predictions[0][0])
-    peak_loss = np.expm1(predictions[0][1]) # Corrected inverse transform
+    # Predict using the separate models (returns log-transformed values)
+    resonance_wavelength = np.expm1(model_rlam.predict(scaled_input)[0])
+    peak_loss = np.expm1(model_ploss.predict(scaled_input)[0])
 
     return resonance_wavelength, peak_loss
 
-# --- MODIFIED STREAMLIT GUI ---
+# --- STREAMLIT GUI ---
 st.title("SPR Sensor Performance Prediction (3-Layer System)")
 
 st.header("Input Parameters")
@@ -76,10 +74,10 @@ ri_start = st.number_input("Start RI", min_value=1.33, max_value=1.43, value=1.3
 ri_end = st.number_input("End RI", min_value=1.33, max_value=1.43, value=1.41, step=0.001, format="%.3f")
 ri_step = st.number_input("Step Size", min_value=0.001, max_value=0.1, value=0.005, step=0.001, format="%.3f")
 
-# Number of Layers (changed options to 1, 2, 3)
-num_layers = st.selectbox("Number of Layers", options=[1, 2, 3], index=2) # Default to 3 layers
+# Number of Layers
+num_layers = st.selectbox("Number of Layers", options=[1, 2, 3], index=2)  # Default to 3 layers
 
-# Materials (changed loop to range(3))
+# Materials
 st.subheader("Material of Each Layer")
 material_options = ["None", "Au", "Ag", "Cu", "Graphene (C)"]
 materials = []
@@ -108,7 +106,7 @@ if st.button("Predict for RI Range"):
                 results_data.append([analyte_ri, resonance, loss])
             except Exception as e:
                 st.error(f"Error during prediction for RI {analyte_ri:.3f}: {str(e)}")
-                break # Stop on error
+                break  # Stop on error
 
         if results_data:
             results_df = pd.DataFrame(results_data, columns=["Analyte RI", "Resonance Wavelength (µm)", "Peak Loss (dB/m)"])
