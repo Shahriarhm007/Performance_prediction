@@ -8,10 +8,10 @@ import pandas as pd
 # Load the pre-trained 3-layer model and scaler
 try:
     # Changed to load the 3-layer model and scaler
-    model = joblib.load('best_xgboost_model_3lyrs.pkl')
-    scaler = joblib.load('scaler_3lyrs.pkl')
+    model = joblib.load('best_xgboost_model_3lyrs_new.pkl')
+    scaler = joblib.load('scaler_3lyrs_new.pkl')
 except FileNotFoundError:
-    st.error("Model or scaler file not found. Please ensure 'best_xgboost_model_3lyrs.pkl' and 'scaler_3lyrs.pkl' are in the correct directory.")
+    st.error("Model or scaler file not found. Please ensure 'best_xgboost_model_3lyrs_new.pkl' and 'scaler_3lyrs.pkl' are in the correct directory.")
     st.stop() # Stop the app if files are missing
 
 def predict_resonance_and_loss(analyte_ri, num_layers, materials):
